@@ -14,9 +14,9 @@ var config = require("./test.config.js");
 
 var dbUrl = util.getDBURL(config.dbServer);
 
-var userDB = new PouchDB(dbUrl + "/cane_test_users");
-var keysDB = new PouchDB(dbUrl + "/cane_test_keys");
-var testDB = new PouchDB(dbUrl + "/cane_test_test");
+var userDB = new PouchDB(dbUrl + "/cane_test_users", util.getDBOptions(config.dbServer));
+var keysDB = new PouchDB(dbUrl + "/cane_test_keys", util.getDBOptions(config.dbServer));
+var testDB = new PouchDB(dbUrl + "/cane_test_test", util.getDBOptions(config.dbServer));
 
 var userDesign = require("../designDocs/user-design");
 var couchDesign = require("../designDocs/couch-design");
@@ -61,7 +61,7 @@ describe("DBAuth", function() {
       })
       .then(function(result) {
         expect(result).to.equal(true);
-        var destroyDB = new PouchDB(dbUrl + "/" + testDBName);
+        var destroyDB = new PouchDB(dbUrl + "/" + testDBName, util.getDBOptions(config.dbServer));
         return destroyDB.destroy();
       });
   });
@@ -156,7 +156,7 @@ describe("DBAuth", function() {
       })
       .then(function(finalDBName) {
         expect(finalDBName).to.equal("test_personal$test(2e)user(2d)31(40)cool(2e)com");
-        newDB = new PouchDB(dbUrl + "/" + finalDBName);
+        newDB = new PouchDB(dbUrl + "/" + finalDBName, util.getDBOptions(config.dbServer));
         return newDB.get("_security");
       }).then(function(secDoc) {
         expect(secDoc.admins.roles[0]).to.equal("admin_role");
@@ -210,8 +210,8 @@ describe("DBAuth", function() {
       })
       .then(() => {
         // Fetch the user docs to inspect them
-        db1 = new PouchDB(dbUrl + "/test_expiretest$testuser1");
-        db2 = new PouchDB(dbUrl + "/test_expiretest$testuser2");
+        db1 = new PouchDB(dbUrl + "/test_expiretest$testuser1", util.getDBOptions(config.dbServer));
+        db2 = new PouchDB(dbUrl + "/test_expiretest$testuser2", util.getDBOptions(config.dbServer));
         var promises = [];
         promises.push(keysDB.get("org.couchdb.user:goodkey1"));
         promises.push(keysDB.get("org.couchdb.user:goodkey2"));

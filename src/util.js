@@ -49,18 +49,25 @@ export function verifyPassword(hashObj, password) {
 };
 
 export function getDBURL(db) {
-  var url;
-  if (db.user) {
-    url = db.protocol + encodeURIComponent(db.user) + ":" + encodeURIComponent(db.password) + "@" + db.host;
-  }
-  else {
-    url = db.protocol + db.host;
-  }
-  return url;
+  return db.protocol + db.host;
 };
 
 export function getFullDBURL(dbConfig, dbName) {
   return exports.getDBURL(dbConfig) + "/" + dbName;
+};
+
+export function getDBOptions(dbConfig) {
+  if (dbConfig.user && dbConfig.password) {
+    return {
+      auth: {
+        username: dbConfig.user,
+        password: dbConfig.password
+      }
+    };
+  }
+  else {
+    return {};
+  }
 };
 
 export function toArray(obj) {

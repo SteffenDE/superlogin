@@ -47,7 +47,10 @@ export default function(config, userDB, couchAuthDB) {
     }
     return self.createDB(finalDBName).then(function() {
       // eslint-disable-next-line
-      newDB = new PouchDB(util.getDBURL(config.getItem("dbServer")) + "/" + finalDBName);
+      newDB = new PouchDB(
+        util.getDBURL(config.getItem("dbServer")) + "/" + finalDBName,
+        util.getDBOptions(config.getItem("dbServer"))
+      );
       return adapter.initSecurity(newDB, adminRoles, memberRoles);
     }).then(function() {
       // Seed the design docs
@@ -163,10 +166,14 @@ export default function(config, userDB, couchAuthDB) {
 
   this.createDB = function(dbName) {
     var finalUrl = util.getDBURL(config.getItem("dbServer")) + "/" + dbName;
-    console.log(finalUrl);
-    return axios.put(finalUrl).then(function(res) {
+    return axios.put(finalUrl, null, {
+      auth: {
+        username: config.getItem("dbServer.user"),
+        password: config.getItem("dbServer.password")
+      }
+    }).then(function(res) {
       return BPromise.resolve(res.data);
-    }, function(err) {
+    }).catch(err => {
       if (err.response.status === 412) {
         return BPromise.resolve(false);
       }

@@ -1,5 +1,8 @@
 var path = require("path");
 
+console.log(process.env.COUCH_USER);
+console.log(process.env.COUCH_PASS);
+
 module.exports = {
   port: 5000,
   testMode: {

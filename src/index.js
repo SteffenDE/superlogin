@@ -33,11 +33,20 @@ export default class {
     }
 
     // Create the DBs if they weren't passed in
+    const dbServer = config.getItem("dbServer");
     if (!userDB && config.getItem("dbServer.userDB")) {
-      userDB = new PouchDB(util.getFullDBURL(config.getItem("dbServer"), config.getItem("dbServer.userDB")));
+      userDB = new PouchDB(
+        util.getFullDBURL(dbServer, config.getItem("dbServer.userDB")),
+        // get authentication options
+        util.getDBOptions(dbServer)
+      );
     }
-    if (!couchAuthDB && config.getItem("dbServer.couchAuthDB")) {
-      couchAuthDB = new PouchDB(util.getFullDBURL(config.getItem("dbServer"), config.getItem("dbServer.couchAuthDB")));
+    if (!couchAuthDB && config.getItem("dbServer.couchAuthDB") && !config.getItem("dbServer.disableCouchUsers")) {
+      couchAuthDB = new PouchDB(
+        util.getFullDBURL(dbServer, config.getItem("dbServer.couchAuthDB")),
+        // get authentication options
+        util.getDBOptions(dbServer)
+      );
     }
     if (!userDB || typeof userDB !== "object") {
       throw new Error("userDB must be passed in as the third argument or specified in the config file under dbServer.userDB");
@@ -52,7 +61,9 @@ export default class {
     var couchDesign = require("../designDocs/couch-design");
     userDesign = util.addProvidersToDesignDoc(config, userDesign);
     seed(userDB, userDesign);
-    seed(couchAuthDB, couchDesign);
+    if (couchAuthDB) {
+      seed(couchAuthDB, couchDesign);
+    }
     // Configure Passport local login and api keys
     localConfig(config, passport, user);
     // Load the routes

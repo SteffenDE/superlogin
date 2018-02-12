@@ -27,7 +27,8 @@ module.exports = {
     designDocDir: path.join(__dirname, '/designDocs'),
     userDB: 'sl_users',
     // CouchDB's _users database. Each session generates the user a unique login and password. This is not used with Cloudant.
-    couchAuthDB: '_users'
+    couchAuthDB: '_users',
+    disableCouchUsers: false
   },
   emails: {
     confirmEmail: {

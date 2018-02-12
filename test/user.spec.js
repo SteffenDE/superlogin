@@ -22,13 +22,6 @@ var dbUrl = util.getDBURL(config.dbServer);
 
 var emitter = new events.EventEmitter();
 
-PouchDB.setMaxListeners(20);
-var userDB = new PouchDB(dbUrl + "/superlogin_test_users");
-var keysDB = new PouchDB(dbUrl + "/superlogin_test_keys");
-
-var couchDesign = require("../designDocs/couch-design");
-seed(keysDB, couchDesign);
-
 var testUserForm = {
   name: "Super",
   username: "superuser",
@@ -126,6 +119,13 @@ var userConfig = new Configure({
   }
 });
 
+PouchDB.setMaxListeners(20);
+var userDB = new PouchDB(dbUrl + "/superlogin_test_users", util.getDBOptions(userConfig.getItem("dbServer")));
+var keysDB = new PouchDB(dbUrl + "/superlogin_test_keys", util.getDBOptions(userConfig.getItem("dbServer")));
+
+var couchDesign = require("../designDocs/couch-design");
+seed(keysDB, couchDesign);
+
 var req = {
   headers: {
     host: "example.com"
@@ -156,10 +156,10 @@ describe("User Model", function() {
   after(function() { // 'should destroy all the test databases'
     return previous.finally(function() {
       // console.log('Destroying database');
-      var userTestDB1 = new PouchDB(dbUrl + "/test_usertest$superuser");
-      var userTestDB2 = new PouchDB(dbUrl + "/test_usertest$misterx");
-      var userTestDB3 = new PouchDB(dbUrl + "/test_usertest$misterx3");
-      var userTestDB4 = new PouchDB(dbUrl + "/test_superdb");
+      var userTestDB1 = new PouchDB(dbUrl + "/test_usertest$superuser", util.getDBOptions(userConfig.getItem("dbServer")));
+      var userTestDB2 = new PouchDB(dbUrl + "/test_usertest$misterx", util.getDBOptions(userConfig.getItem("dbServer")));
+      var userTestDB3 = new PouchDB(dbUrl + "/test_usertest$misterx3", util.getDBOptions(userConfig.getItem("dbServer")));
+      var userTestDB4 = new PouchDB(dbUrl + "/test_superdb", util.getDBOptions(userConfig.getItem("dbServer")));
       return BPromise.all([userDB.destroy(), keysDB.destroy(), userTestDB1.destroy(), userTestDB2.destroy(), userTestDB3.destroy(), userTestDB4.destroy()]);
     });
   });
@@ -207,7 +207,7 @@ describe("User Model", function() {
 
   it("should have created a user db with design doc and _security", function() {
     // console.log('Checking user db and design doc');
-    userTestDB = new PouchDB(dbUrl + "/test_usertest$superuser");
+    userTestDB = new PouchDB(dbUrl + "/test_usertest$superuser", util.getDBOptions(userConfig.getItem("dbServer")));
     return previous
       .then(function() {
         return userTestDB.get("_design/test");

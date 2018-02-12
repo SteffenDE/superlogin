@@ -19,15 +19,21 @@ function start(config) {
   // Mount SuperLogin's routes to our app
   app.use("/auth", superlogin.router);
 
-  app.get("/user", superlogin.requireAuth, superlogin.requireRole("user"),
+  app.get("/user",
+    superlogin.requireAuth,
+    superlogin.requireRole("user"),
     function(req, res) {
       res.send("role user");
-    });
+    }
+  );
 
-  app.get("/admin", superlogin.requireAuth, superlogin.requireRole("admin"),
+  app.get("/admin",
+    superlogin.requireAuth,
+    superlogin.requireRole("admin"),
     function(req, res) {
       res.send("role admin");
-    });
+    }
+  );
 
   var server = http.createServer(app).listen(app.get("port"));
 

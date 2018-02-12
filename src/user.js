@@ -573,15 +573,21 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     const newSession = {};
     let password;
     let jwtoken;
+    let tempOptions = {};
     req = req || {};
-    const newToken = await generateSession(user._id, user.roles);
-    // console.log("generated session", Date.now());
-    password = newToken.password;
-    newToken.provider = provider;
-    await dbAuth.storeKey(user._id, newToken.key, password, newToken.expires, user.roles);
-    // console.log("stored new temp user", Date.now());
-    // Clear any failed login attempts
+    if (couchAuthDB) {
+      const newToken = await generateSession(user._id, user.roles);
+      // console.log("generated session", Date.now());
+      password = newToken.password;
+      newToken.provider = provider;
+      await dbAuth.storeKey(user._id, newToken.key, password, newToken.expires, user.roles);
+      // console.log("stored new temp user", Date.now());
+      tempOptions["dbUser"] = newToken.key;
+      tempOptions["dbPass"] = password;
+      tempOptions["dbExpires"] = newToken.expires;
+    }
     if (provider === "local") {
+      // Clear any failed login attempts
       if (!user.local) user.local = {};
       user.local.failedLoginAttempts = 0;
       delete user.local.lockedUntil;
@@ -592,7 +598,7 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
       await userDB.put(user);
     }
     // console.log("putted final user", Date.now());
-    jwtoken = await self.generateJWT(user, newToken.key, password, newToken.expires);
+    jwtoken = await self.generateJWT(user, tempOptions);
     if (refreshToken) {
       const rt = await self.generateRefreshJWT(user, permanent);
       newSession.refreshToken = rt.token;
@@ -604,11 +610,11 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     newSession.expires = jwtoken.payload.exp * 1000;
     newSession.issued = jwtoken.payload.iat * 1000;
     newSession.ip = req.ip;
-    newSession.dbUser = newToken.key;
-    newSession.dbPass = password;
-    newSession.dbExpires = newToken.expires;
     newSession.user_id = user._id;
     newSession.roles = user.roles;
+    if (couchAuthDB) {
+      Object.assign(newSession, tempOptions);
+    }
     // Inject the list of userDBs
     if (typeof user.personalDBs === "object") {
       let userDBs = {};
@@ -686,19 +692,19 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     return userDoc;
   };
 
-  this.generateJWT = async function(user, tempUser, tempPass, tempExpires) {
+  this.generateJWT = async function(user, tempSession) {
     let tokenid = uuidv4();
     let payload = {
       jti: tokenid,
       sub: user._id,
       iss: config.getItem("security.jwt.issuer"),
       iat: Math.floor(Date.now() / 1000),
-      dbUser: tempUser,
-      dbPass: tempPass,
-      dbExpires: tempExpires,
       roles: user.roles,
       token_use: "access"
     };
+    if (tempSession != null) {
+      Object.assign(payload, tempSession);
+    }
     let jwtExpires = config.getItem("security.jwt.expires");
     jwtExpires = typeof jwtExpires === "string" ? Math.floor(ms(jwtExpires) / 1000) : jwtExpires || Math.floor(ms("15m") / 1000);
     payload["exp"] = Math.floor(Date.now() / 1000) + jwtExpires;
@@ -734,23 +740,30 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     let user = req.user;
     let newSession = {};
     let newExpires;
+    let tempOptions = {};
     let provider = null;
-    if (user.payload.token_use === "access" && user.payload.dbExpires < Date.now()) {
-      const tempUser = await couchAuthDB.get("org.couchdb.user:" + user.payload.dbUser);
-      newExpires = Date.now() + sessionLife;
-      tempUser.expires = newExpires;
-      tempUser.roles = user.roles;
-      await couchAuthDB.put(tempUser);
-      const jwt_ = await self.generateJWT(user, user.payload.dbUser, user.payload.dbPass, newExpires);
+    if (user.payload.token_use === "access") {
+      if (couchAuthDB && user.payload.dbExpires < Date.now()) {
+        const tempUser = await couchAuthDB.get("org.couchdb.user:" + user.payload.dbUser);
+        tempUser.expires = newExpires;
+        tempUser.roles = user.roles;
+        await couchAuthDB.put(tempUser);
+        tempOptions["dbUser"] = user.payload.dbUser;
+        tempOptions["dbPass"] = user.payload.dbPass;
+        tempOptions["dbExpires"] = newExpires;
+      }
+      const jwt_ = await self.generateJWT(user, tempOptions);
       newSession.token = jwt_.token;
       newSession.expires = jwt_.payload.exp * 1000;
       newSession.issued = jwt_.payload.iat * 1000;
       newSession.ip = req.ip;
-      newSession.dbUser = jwt_.payload.dbUser;
-      newSession.dbPass = jwt_.payload.dbPass;
-      newSession.dbExpires = jwt_.payload.dbExpires;
       newSession.user_id = user._id;
       newSession.roles = user.roles;
+      if (couchAuthDB) {
+        newSession.dbUser = jwt_.payload.dbUser;
+        newSession.dbPass = jwt_.payload.dbPass;
+        newSession.dbExpires = jwt_.payload.dbExpires;
+      }
       // Inject the list of userDBs
       if (typeof user.personalDBs === "object") {
         let userDBs = {};
@@ -1019,6 +1032,9 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
   };
 
   this.logoutSession = async function(user, sessionId) {
+    if (!couchAuthDB) {
+      return false;
+    }
     await dbAuth.removeKeys(sessionId);
     await self.logoutUserSessions(user, "expired");
     emitter.emit("logout", user._id);
@@ -1031,6 +1047,12 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
 
   this.logoutUserSessions = function(userDoc, op, currentSession) {
     return new Promise((resolve, reject) => {
+      if (!couchAuthDB) {
+        // sessions are jwt based only
+        // no need to delete any temporary users
+        resolve();
+        return;
+      }
       // When op is 'other' it will logout all sessions except for the specified 'currentSession'
       let promises = [];
       let promise;
@@ -1068,10 +1090,10 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     let promises = [];
     return userDB.get(userId)
       .then(function(userDoc) {
+        user = userDoc;
         return self.logoutUserSessions(userDoc, "all");
       })
-      .then(function(userDoc) {
-        user = userDoc;
+      .then(function() {
         if (destroyDBs !== true || !user.personalDBs) {
           return BPromise.resolve();
         }
@@ -1090,6 +1112,9 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
   this.removeExpiredKeys = dbAuth.removeExpiredKeys.bind(dbAuth);
 
   this.getSessions = function(userId) {
+    if (!couchAuthDB) {
+      return Promise.resolve();
+    }
     return couchAuthDB.query("_superlogin/user", {
       key: userId,
       include_docs: true
@@ -1101,6 +1126,9 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
   };
 
   this.getExpiredSessions = function(userId, date) {
+    if (!couchAuthDB) {
+      return Promise.resolve();
+    }
     return couchAuthDB.query("_superlogin/expired", {
       include_docs: true
     }).then(result => {
@@ -1208,17 +1236,22 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
         let dbConfig = dbAuth.getDBConfig(userDBName);
         dbConfig.memberRoles.push("user:" + newUser._id);
         // console.log(dbConfig);
-        promises.push(
-          dbAuth.addUserDB(newUser, userDBName, dbConfig.designDocs, type, dbConfig.permissions, dbConfig.adminRoles,
-            dbConfig.memberRoles)
-            .then(function(finalDBName) {
-              delete dbConfig.permissions;
-              delete dbConfig.adminRoles;
-              delete dbConfig.memberRoles;
-              delete dbConfig.designDocs;
-              dbConfig.type = type;
-              newUser.personalDBs[finalDBName] = dbConfig;
-            }));
+        promises.push(dbAuth.addUserDB(
+          newUser,
+          userDBName,
+          dbConfig.designDocs,
+          type,
+          dbConfig.permissions,
+          dbConfig.adminRoles,
+          dbConfig.memberRoles
+        ).then(function(finalDBName) {
+          delete dbConfig.permissions;
+          delete dbConfig.adminRoles;
+          delete dbConfig.memberRoles;
+          delete dbConfig.designDocs;
+          dbConfig.type = type;
+          newUser.personalDBs[finalDBName] = dbConfig;
+        }));
       });
     };
 
