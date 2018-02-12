@@ -1,8 +1,10 @@
+import fs from "fs";
 import BPromise from "bluebird";
 import URLSafeBase64 from "urlsafe-base64";
 import * as uuid from "uuid";
 import pwd from "couch-pwd";
 import crypto from "crypto";
+import { pem2jwk } from "pem-jwk";
 
 export function URLSafeUUID() {
   return URLSafeBase64.encode(uuid.v4(null, Buffer.alloc(16)));
@@ -210,3 +212,18 @@ export function arrayUnion(a, b) {
   }
   return result;
 };
+
+export async function getJWKSfromPublicKey(jwt) {
+  await BPromise.promisify(fs.stat)(jwt.publicKeyFile);
+  const keyStr = await BPromise.promisify(fs.readFile)(jwt.publicKeyFile, "ascii");
+  const jwk = pem2jwk(keyStr);
+  return {
+    keys: [
+      Object.assign({}, jwk, {
+        alg: jwt.algorithm,
+        kid: jwt.kid,
+        use: "sig"
+      })
+    ]
+  };
+}

@@ -291,6 +291,19 @@ export default function(config, router, passport, user) {
       });
     });
 
+  router.get("/jwks.json", async function(req, res) {
+    if (/(RS|ES)(\d+)/.test(config.getItem("security.jwt.algorithm"))) {
+      const jwks = await util.getJWKSfromPublicKey(config.getItem("security.jwt"));
+      res.status(200).json(jwks);
+    }
+    else {
+      res.status(404).json({
+        ok: true,
+        message: "JWKS is only enabled when using public-key cryptography."
+      });
+    }
+  });
+
   // Error handling
   router.use(function(err, req, res, next) {
     console.error(err);

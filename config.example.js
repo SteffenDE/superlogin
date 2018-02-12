@@ -33,7 +33,17 @@ module.exports = {
     loginOnPasswordReset: false,
     jwt: {
       issuer: "https://api.example.com",
-      secret: "changeme"
+      // algorithm (see https://github.com/auth0/node-jsonwebtoken#algorithms-supported)
+      // e.g. HS256 or RS256
+      algorithm: "HS256",
+      // if using HMAC
+      secret: "changeme",
+      // if using RSA
+      // RSA allows using /.well-known/jwks.json
+      publicKeyFile: "./publicKey.pem",
+      privateKeyFile: "./privateKey.pem",
+      // random String used to identify the key
+      kid: "09ef3f28dfaccb6e490f888bcf614caa89fe92ec2fcf471e3986c0e242a4ae0d"
     }
   },
   local: {

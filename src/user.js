@@ -1,3 +1,4 @@
+import fs from "fs";
 import url from "url";
 import BPromise from "bluebird";
 import Model from "sofa-model";
@@ -562,7 +563,6 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
   };
 
   this.createSession = async function(userId, provider, req, refreshToken) {
-    console.log("createSession", userId, provider);
     req = req || {};
     const permanent = req.body && req.body.permanent;
     let user = req.user;
@@ -705,10 +705,21 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     if (tempSession != null) {
       Object.assign(payload, tempSession);
     }
+    const jwtAlgorithm = config.getItem("security.jwt.algorithm");
+    let secretOrPrivateKey;
+    if (/(RS|ES)(\d+)/.test(jwtAlgorithm)) {
+      secretOrPrivateKey = await BPromise.promisify(fs.readFile)(config.getItem("security.jwt.privateKeyFile"), "ascii");
+      payload["kid"] = config.getItem("security.jwt.kid");
+    }
+    else {
+      secretOrPrivateKey = config.getItem("security.jwt.secret");
+    }
     let jwtExpires = config.getItem("security.jwt.expires");
     jwtExpires = typeof jwtExpires === "string" ? Math.floor(ms(jwtExpires) / 1000) : jwtExpires || Math.floor(ms("15m") / 1000);
     payload["exp"] = Math.floor(Date.now() / 1000) + jwtExpires;
-    const token = await BPromise.promisify(jwt.sign)(payload, config.getItem("security.jwt.secret"));
+    const token = await BPromise.promisify(jwt.sign)(payload, secretOrPrivateKey, {
+      algorithm: jwtAlgorithm
+    });
     return {
       token: token,
       payload: payload
@@ -729,7 +740,18 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
       jwtExpires = typeof jwtExpires === "string" ? Math.floor(ms(jwtExpires) / 1000) : jwtExpires || Math.floor(ms("30d") / 1000);
       payload["exp"] = Math.floor(Date.now() / 1000) + jwtExpires;
     }
-    const token = await BPromise.promisify(jwt.sign)(payload, config.getItem("security.jwt.secret"));
+    const jwtAlgorithm = config.getItem("security.jwt.algorithm");
+    let secretOrPrivateKey;
+    if (/(RS|ES)(\d+)/.test(jwtAlgorithm)) {
+      secretOrPrivateKey = await BPromise.promisify(fs.readFile)(config.getItem("security.jwt.privateKeyFile"), "ascii");
+      payload["kid"] = config.getItem("security.jwt.kid");
+    }
+    else {
+      secretOrPrivateKey = config.getItem("security.jwt.secret");
+    }
+    const token = await BPromise.promisify(jwt.sign)(payload, secretOrPrivateKey, {
+      algorithm: jwtAlgorithm
+    });
     return {
       token: token,
       payload: payload
