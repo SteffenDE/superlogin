@@ -10,7 +10,7 @@
     if (window.opener) {
         window.opener.focus();
         var session = <%- JSON.stringify(session) %>;
-        var error = <%- JSON.stringify(error) %>;
+        var error = <%- JSON.stringify(error) || "null" %>;
         var link = <%- JSON.stringify(link) %>;
         try {
             if (window.opener.superlogin && window.opener.superlogin.oauthSession) {

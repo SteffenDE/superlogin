@@ -10,7 +10,7 @@ export default function(router, passport, user, config) {
   async function initSession(req, res, next) {
     var provider = getProvider(req.path);
     try {
-      const mySession = await user.createSession(provider, req);
+      const mySession = await user.createSession(req.user._id, provider, req);
       const results = {
         error: null,
         session: mySession,
@@ -35,7 +35,7 @@ export default function(router, passport, user, config) {
   async function initTokenSession(req, res, next) {
     var provider = getProviderToken(req.path);
     try {
-      const session = await user.createSession(provider, req);
+      const session = await user.createSession(req.user._id, provider, req);
       res.status(200).json(session);
     }
     catch (err) {
@@ -108,7 +108,6 @@ export default function(router, passport, user, config) {
 
   // Framework to register OAuth providers with passport
   function registerProvider(provider, configFunction) {
-    console.log(provider, this);
     provider = provider.toLowerCase();
     var configRef = "providers." + provider;
     if (config.getItem(configRef + ".credentials")) {
@@ -154,18 +153,20 @@ export default function(router, passport, user, config) {
       passport.use(new Strategy(credentials,
         async(req, accessToken, refreshToken, profile, done) => {
           try {
-            const res = await authHandler(
-              req,
+            const user = await authHandler(
               providerName,
               {
                 accessToken: accessToken,
                 refreshToken: refreshToken
               },
-              profile
+              profile,
+              req
             );
-            done(res);
+            req.user = user;
+            done(user);
           }
           catch (err) {
+            console.warn("socialAuth error", err);
             done(err);
           }
         }
@@ -187,13 +188,13 @@ export default function(router, passport, user, config) {
         async(req, accessToken, refreshToken, profile, done) => {
           try {
             const res = await authHandler(
-              req,
               providerName,
               {
                 accessToken: accessToken,
                 refreshToken: refreshToken
               },
-              profile
+              profile,
+              req
             );
             done(res);
           }
@@ -223,7 +224,7 @@ export default function(router, passport, user, config) {
   // This is called after a user has successfully authenticated with a provider
   // If a user is authenticated with a bearer token we will link an account, otherwise log in
   // auth is an object containing 'access_token' and optionally 'refresh_token'
-  function authHandler(req, provider, auth, profile) {
+  function authHandler(provider, auth, profile, req) {
     if (req.user && req.user._id && req.user.key) {
       return user.linkSocial(req.user._id, provider, auth, profile, req);
     }
@@ -235,7 +236,6 @@ export default function(router, passport, user, config) {
   // Configures the passport.authenticate for the given provider, passing in options
   // Operation is 'login' or 'link'
   function passportCallback(provider, options, operation) {
-    // console.log(provider, options, operation);
     return (req, res, next) => {
       var theOptions = Object.assign({}, options);
       if (provider === "linkedin") {
@@ -247,7 +247,9 @@ export default function(router, passport, user, config) {
       }
       theOptions.callbackURL = getLinkCallbackURLs(provider, req, operation, accessToken);
       theOptions.session = false;
-      passport.authenticate(provider, theOptions)(req, res, next);
+      passport.authenticate(provider, theOptions)(req, res, function() {
+        next();
+      });
     };
   }
 

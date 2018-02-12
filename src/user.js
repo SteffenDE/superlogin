@@ -562,7 +562,7 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
   };
 
   this.createSession = async function(userId, provider, req, refreshToken) {
-    // console.log("createSession", Date.now());
+    console.log("createSession", userId, provider);
     req = req || {};
     const permanent = req.body && req.body.permanent;
     let user = req.user;
