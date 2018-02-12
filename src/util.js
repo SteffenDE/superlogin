@@ -53,7 +53,7 @@ export function getDBURL(db) {
 };
 
 export function getFullDBURL(dbConfig, dbName) {
-  return exports.getDBURL(dbConfig) + "/" + dbName;
+  return getDBURL(dbConfig) + "/" + dbName;
 };
 
 export function getDBOptions(dbConfig) {

@@ -4,8 +4,9 @@
   "description": "Powerful authentication for APIs and single page apps using the CouchDB ecosystem which supports a variety of providers.",
   "main": "./lib/index.js",
   "scripts": {
-    "build": "node node_modules/webpack/bin/webpack.js",
-    "prepare": "npm run build",
+    "lint": "node node_modules/.bin/eslint src/",
+    "build": "node_modules/rollup/bin/rollup -c rollup.config.js",
+    "prepare": "npm run lint && npm run build",
     "test": "gulp"
   },
   "repository": {
@@ -13,7 +14,7 @@
     "url": "https://github.com/SteffenDE/superlogin-jwt.git"
   },
   "engines": {
-    "node": ">=4.0.0"
+    "node": ">=6"
   },
   "keywords": [
     "authentication",
@@ -59,7 +60,10 @@
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-env": "^1.6.1",
+    "babel-runtime": "^6.26.0",
     "body-parser": "^1.18.2",
     "chai": "^4.1.2",
     "eslint": "^4.17.0",
@@ -75,8 +79,11 @@
     "mocha": "^5.0.0",
     "morgan": "^1.9.0",
     "rimraf": "^2.6.2",
-    "sinon": "^4.2.2",
-    "sinon-chai": "^2.14.0",
-    "webpack": "^3.10.0"
+    "rollup": "^0.55.5",
+    "rollup-plugin-babel": "^3.0.3",
+    "rollup-plugin-commonjs": "^8.3.0",
+    "rollup-plugin-json": "^2.3.0",
+    "sinon": "^4.3.0",
+    "sinon-chai": "^2.14.0"
   }
 }
