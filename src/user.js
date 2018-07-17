@@ -612,6 +612,11 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     newSession.ip = req.ip;
     newSession.user_id = user._id;
     newSession.roles = user.roles;
+    newSession.email = user.email;
+    if (user.unverifiedEmail) {
+      newSession.email = user.unverifiedEmail.email;
+      newSession.verifyEmail = true;
+    }
     if (couchAuthDB) {
       Object.assign(newSession, tempOptions);
     }
@@ -781,6 +786,7 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
       newSession.ip = req.ip;
       newSession.user_id = user._id;
       newSession.roles = user.roles;
+      newSession.email = user.email;
       if (couchAuthDB) {
         newSession.dbUser = jwt_.payload.dbUser;
         newSession.dbPass = jwt_.payload.dbPass;

@@ -287,9 +287,27 @@ export default function(config, router, passport, user) {
         dbExpires: user.payload.dbExpires,
         user_id: user.user_id,
         roles: user.roles,
-        userDBs: user.userDBs
+        userDBs: user.userDBs,
+        email: user.email
       });
     });
+
+  // route to test token authentication
+  router.get("/userinfo", passport.authenticate("bearer", { session: false }),
+    async function(req, res, next) {
+      try {
+        const userinfo = await user.get(req.user._id);
+        if (userinfo.local) {
+          delete userinfo.local.salt;
+          delete userinfo.local.derived_key;
+        }
+        res.status(200).json(userinfo);
+      }
+      catch (err) {
+        return next(err);
+      }
+    }
+  );
 
   router.get("/jwks.json", async function(req, res) {
     if (/(RS|ES)(\d+)/.test(config.getItem("security.jwt.algorithm"))) {
