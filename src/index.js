@@ -1,5 +1,3 @@
-import { install } from "source-map-support";
-
 import events from "events";
 import express from "express";
 
@@ -12,7 +10,6 @@ import Middleware from "./middleware";
 import Mailer from "./mailer";
 import * as util from "./util";
 import seed from "pouchdb-seed-design";
-install();
 
 export default class {
   constructor(configData, passport, PouchDB, userDB, couchAuthDB) {
