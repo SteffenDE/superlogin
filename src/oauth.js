@@ -10,6 +10,9 @@ export default function(router, passport, user, config) {
   async function initSession(req, res, next) {
     var provider = getProvider(req.path);
     try {
+      if (!req.user) {
+        throw new Error("oauth failed");
+      }
       const mySession = await user.createSession(req.user._id, provider, req);
       const results = {
         error: null,
@@ -27,6 +30,7 @@ export default function(router, passport, user, config) {
       res.status(200).send(html);
     }
     catch (err) {
+      console.log("[oauth] initSession error", err);
       return next(err);
     }
   }
@@ -39,6 +43,7 @@ export default function(router, passport, user, config) {
       res.status(200).json(session);
     }
     catch (err) {
+      console.log("[oauth] initTokenSession error", err);
       return next(err);
     }
   }
@@ -81,7 +86,7 @@ export default function(router, passport, user, config) {
     else {
       template = fs.readFileSync(path.join(__dirname, "../templates/oauth/auth-callback.ejs"), "utf8");
     }
-    var html = ejs.render(template, {error: err.message, session: null, link: null});
+    var html = ejs.render(template, { error: err.message, session: null, link: null });
     console.error(err);
     if (err.stack) {
       console.error(err.stack);
@@ -131,13 +136,13 @@ export default function(router, passport, user, config) {
         // register link route
         router.get(
           "/link/" + provider,
-          passport.authenticate("bearer", {session: false}),
+          passport.authenticate("bearer", { session: false }),
           passportCallback(provider, options, "link")
         );
         // register link callback
         router.get(
           "/link/" + provider + "/callback",
-          passport.authenticate("bearer", {session: false}),
+          passport.authenticate("bearer", { session: false }),
           passportCallback(provider, options, "link"),
           linkSuccess,
           oauthErrorHandler
@@ -211,7 +216,7 @@ export default function(router, passport, user, config) {
       if (!config.getItem("security.disableLinkAccounts")) {
         router.post(
           "/link/" + providerName + "/token",
-          passport.authenticate("bearer", {session: false}),
+          passport.authenticate("bearer", { session: false }),
           passportTokenCallback(providerName, options),
           linkTokenSuccess,
           tokenAuthErrorHandler
@@ -225,6 +230,7 @@ export default function(router, passport, user, config) {
   // If a user is authenticated with a bearer token we will link an account, otherwise log in
   // auth is an object containing 'access_token' and optionally 'refresh_token'
   function authHandler(provider, auth, profile, req) {
+    console.log("[oauth] authHandler", provider, auth, profile);
     if (req.user && req.user._id && req.user.key) {
       return user.linkSocial(req.user._id, provider, auth, profile, req);
     }
@@ -236,6 +242,7 @@ export default function(router, passport, user, config) {
   // Configures the passport.authenticate for the given provider, passing in options
   // Operation is 'login' or 'link'
   function passportCallback(provider, options, operation) {
+    // console.log("passportCallback", provider, options, operation);
     return (req, res, next) => {
       var theOptions = Object.assign({}, options);
       if (provider === "linkedin") {
@@ -248,6 +255,7 @@ export default function(router, passport, user, config) {
       theOptions.callbackURL = getLinkCallbackURLs(provider, req, operation, accessToken);
       theOptions.session = false;
       passport.authenticate(provider, theOptions)(req, res, function() {
+        console.log("authenticated!!!");
         next();
       });
     };

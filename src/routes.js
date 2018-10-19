@@ -82,7 +82,7 @@ export default function(config, router, passport, user) {
     async function(req, res, next) {
       try {
         await user.logoutUser(req.user);
-        res.status(200).json({success: "Logged out"});
+        res.status(200).json({ success: "Logged out" });
       }
       catch (err) {
         console.error("Logout-all failed");
@@ -128,7 +128,7 @@ export default function(config, router, passport, user) {
   router.post("/forgot-password", async function(req, res, next) {
     try {
       await user.forgotPassword(req.body.email, req);
-      res.status(200).json({success: "Password recovery email sent."});
+      res.status(200).json({ success: "Password recovery email sent." });
     }
     catch (err) {
       return next(err);
@@ -148,7 +148,7 @@ export default function(config, router, passport, user) {
         }
       }
       else {
-        res.status(200).json({success: "Password successfully reset."});
+        res.status(200).json({ success: "Password successfully reset." });
       }
     }
     catch (err) {
@@ -160,7 +160,7 @@ export default function(config, router, passport, user) {
     async function(req, res, next) {
       try {
         await user.changePasswordSecure(req.user._id, req.body, req);
-        res.status(200).json({success: "password changed"});
+        res.status(200).json({ success: "password changed" });
       }
       catch (err) {
         return next(err);
@@ -197,7 +197,7 @@ export default function(config, router, passport, user) {
       if (redirectURL) {
         return res.status(201).redirect(redirectURL + "?success=true");
       }
-      res.status(200).send({ok: true, success: "Email verified"});
+      res.status(200).send({ ok: true, success: "Email verified" });
     }
     catch (err) {
       if (redirectURL) {
@@ -222,10 +222,10 @@ export default function(config, router, passport, user) {
     try {
       const err = await user.validateUsername(req.params.username);
       if (!err) {
-        res.status(200).json({ok: true});
+        res.status(200).json({ ok: true });
       }
       else {
-        res.status(409).json({error: "Username already in use"});
+        res.status(409).json({ error: "Username already in use" });
       }
     }
     catch (err) {
@@ -235,7 +235,7 @@ export default function(config, router, passport, user) {
 
   router.get("/validate-email/:email", async function(req, res, next) {
     if (!req.params.email) {
-      return next({error: "Email required", status: 400});
+      return next({ error: "Email required", status: 400 });
     }
     try {
       let err;
@@ -246,10 +246,10 @@ export default function(config, router, passport, user) {
         err = await user.validateEmail(req.params.email);
       }
       if (!err) {
-        res.status(200).json({ok: true});
+        res.status(200).json({ ok: true });
       }
       else {
-        res.status(409).json({error: "Email already in use"});
+        res.status(409).json({ error: "Email already in use" });
       }
     }
     catch (err) {
@@ -261,7 +261,7 @@ export default function(config, router, passport, user) {
     async function(req, res, next) {
       try {
         await user.changeEmail(req.user._id, req.body.newEmail, req);
-        res.status(200).json({ok: true, success: "Email changed"});
+        res.status(200).json({ ok: true, success: "Email changed" });
       }
       catch (err) {
         return next(err);

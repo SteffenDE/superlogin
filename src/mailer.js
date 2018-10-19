@@ -59,7 +59,7 @@ export default class {
       console.log(mailOptions);
     }
     // send the message
-    var sendEmail = BPromise.promisify(this.transporter.sendMail, {context: this.transporter});
+    var sendEmail = BPromise.promisify(this.transporter.sendMail, { context: this.transporter });
     return sendEmail(mailOptions);
   };
 };

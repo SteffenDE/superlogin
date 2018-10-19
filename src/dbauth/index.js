@@ -1,15 +1,10 @@
 import BPromise from "bluebird";
 import * as util from "./../util";
-import axios from "axios";
 import seed from "pouchdb-seed-design";
 
 import CouchAdapter from "./couchdb";
 
-const PouchDB = require("pouchdb-core")
-  .plugin(require("pouchdb-adapter-http"))
-  .plugin(require("pouchdb-mapreduce"));
-
-export default function(config, userDB, couchAuthDB) {
+export default function(config, PouchDB, userDB, couchAuthDB) {
   var adapter = new CouchAdapter(couchAuthDB);
 
   this.storeKey = function(username, key, password, expires, roles) {
@@ -166,21 +161,18 @@ export default function(config, userDB, couchAuthDB) {
 
   this.createDB = function(dbName) {
     var finalUrl = util.getDBURL(config.getItem("dbServer")) + "/" + dbName;
-    return axios.put(finalUrl, null, {
-      auth: {
-        username: config.getItem("dbServer.user"),
-        password: config.getItem("dbServer.password")
-      }
-    }).then(function(res) {
-      return BPromise.resolve(res.data);
-    }).catch(err => {
-      if (err.response.status === 412) {
-        return BPromise.resolve(false);
-      }
-      else {
-        return BPromise.reject(err.response);
-      }
-    });
+    let db = new PouchDB(finalUrl);
+    console.log(db);
+    return BPromise.resolve();
+    // }).catch(err => {
+    //   console.log(err);
+    //   if (err.response.status === 412) {
+    //     return BPromise.resolve(false);
+    //   }
+    //   else {
+    //     return BPromise.reject(err.response);
+    //   }
+    // });
   };
 
   this.removeDB = function(dbName) {

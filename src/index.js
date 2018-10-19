@@ -1,3 +1,5 @@
+import { install } from "source-map-support";
+
 import events from "events";
 import express from "express";
 
@@ -10,16 +12,20 @@ import Middleware from "./middleware";
 import Mailer from "./mailer";
 import * as util from "./util";
 import seed from "pouchdb-seed-design";
-
-const PouchDB = require("pouchdb-core")
-  .plugin(require("pouchdb-adapter-http"))
-  .plugin(require("pouchdb-mapreduce"));
+install();
 
 export default class {
-  constructor(configData, passport, userDB, couchAuthDB) {
+  constructor(configData, passport, PouchDB, userDB, couchAuthDB) {
     const config = new Configure(configData, require("../config/default.config"));
     const router = express.Router();
     const emitter = new events.EventEmitter();
+
+    if (typeof PouchDB !== "function") {
+      // console.log("using default PouchDB");
+      PouchDB = require("pouchdb-core")
+        .plugin(require("pouchdb-adapter-http"))
+        .plugin(require("pouchdb-mapreduce"));
+    }
 
     if (!passport || typeof passport !== "object") {
       passport = require("passport");
@@ -53,7 +59,7 @@ export default class {
     }
 
     const mailer = new Mailer(config);
-    const user = new User(config, userDB, couchAuthDB, mailer, emitter);
+    const user = new User(config, PouchDB, userDB, couchAuthDB, mailer, emitter);
     const oauth = new Oauth(router, passport, user, config);
 
     // Seed design docs for the user database

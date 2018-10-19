@@ -18,7 +18,7 @@ export default function(config, passport, user) {
           done(err, false);
         }
         else {
-          done(null, false, {message: err.message});
+          done(null, false, { message: err.message });
         }
       }
     }

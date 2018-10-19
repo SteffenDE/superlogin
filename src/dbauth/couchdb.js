@@ -35,7 +35,7 @@ export default function(couchAuthDB) {
       keylist.push("org.couchdb.user:" + key);
     });
     var toDelete = [];
-    return couchAuthDB.allDocs({keys: keylist})
+    return couchAuthDB.allDocs({ keys: keylist })
       .then(function(keyDocs) {
         console.log(keylist, keyDocs);
         keyDocs.rows.forEach(function(row) {
@@ -62,13 +62,13 @@ export default function(couchAuthDB) {
     return db.get("_security")
       .then(function(secDoc) {
         if (!secDoc.admins) {
-          secDoc.admins = {names: [], roles: []};
+          secDoc.admins = { names: [], roles: [] };
         }
         if (!secDoc.admins.roles) {
           secDoc.admins.roles = [];
         }
         if (!secDoc.members) {
-          secDoc.members = {names: [], roles: []};
+          secDoc.members = { names: [], roles: [] };
         }
         if (!secDoc.members.roles) {
           secDoc.admins.roles = [];
@@ -110,7 +110,7 @@ export default function(couchAuthDB) {
       .then(function(doc) {
         secDoc = doc;
         if (!secDoc.members) {
-          secDoc.members = {names: [], roles: []};
+          secDoc.members = { names: [], roles: [] };
         }
         if (!secDoc.members.names) {
           secDoc.members.names = [];

@@ -13,9 +13,9 @@ import ms from "ms";
 let EMAIL_REGEXP = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/;
 let USER_REGEXP = /^[a-z0-9_-]{3,16}$/;
 
-export default function(config, userDB, couchAuthDB, mailer, emitter) {
+export default function(config, PouchDB, userDB, couchAuthDB, mailer, emitter) {
   let self = this;
-  let dbAuth = new DBAuth(config, userDB, couchAuthDB);
+  let dbAuth = new DBAuth(config, PouchDB, userDB, couchAuthDB);
   let onCreateActions = [];
   let onLinkActions = [];
 
@@ -289,7 +289,7 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     const result = await userDB.put(newUser);
     newUser._rev = result.rev;
     if (config.getItem("local.sendConfirmEmail")) {
-      await mailer.sendEmail("confirmEmail", newUser.unverifiedEmail.email, {req: req, user: newUser});
+      await mailer.sendEmail("confirmEmail", newUser.unverifiedEmail.email, { req: req, user: newUser });
     }
     emitter.emit("signup", newUser, "local");
     return newUser;
@@ -363,6 +363,7 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
   };
 
   this.socialAuth = async function(provider, auth, profile, req) {
+    // console.log("socialAuth", profile.id);
     let user;
     let newAccount = false;
     let action;
@@ -371,10 +372,12 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     let ip = req.ip;
     // It is important that we return a Bluebird promise so oauth.js can call .nodeify()
     const results = await userDB.query("auth/" + provider, { key: profile.id, include_docs: true });
+    // console.log(results);
     if (results.rows.length > 0) {
       user = results.rows[0].doc;
     }
     else {
+      // console.log("newAccount");
       newAccount = true;
       user = {};
       user[provider] = {};
@@ -389,6 +392,7 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
         timestamp: new Date().toISOString(),
         ip: ip
       };
+      // console.log(user);
       let emailFail = function() {
         let error = new Error("Your email is already in use. Try signing in first and then linking this account.");
         error.status = 409;
@@ -440,20 +444,27 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     }
     delete user[provider].profile._raw;
     if (newAccount) {
+      // console.log("add user db");
       await addUserDBs(user);
     }
     action = newAccount ? "signup" : "login";
+    // console.log("logActivity");
     await self.logActivity(user._id, action, provider, req, user);
     if (newAccount) {
+      // console.log("onCreateActions");
       await processTransformations(onCreateActions, user, provider);
     }
     else {
+      // console.log("onLinkActions");
       await processTransformations(onLinkActions, user, provider);
     }
+    // console.log("putting");
     await userDB.put(user);
     if (action === "signup") {
+      // console.log("emitting");
       emitter.emit("signup", user, provider);
     }
+    // console.log("new user", user);
     return user;
   };
 
@@ -483,10 +494,10 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
       emailRes = { rows: [] };
     }
     if (emailUsername) {
-      emailRes = await userDB.query("auth/emailUsername", {key: profile.emails[0].value});
+      emailRes = await userDB.query("auth/emailUsername", { key: profile.emails[0].value });
     }
     else {
-      emailRes = await userDB.query("auth/email", {key: profile.emails[0].value});
+      emailRes = await userDB.query("auth/email", { key: profile.emails[0].value });
     }
     let passed;
     if (emailRes.rows.length === 0) {
@@ -842,13 +853,13 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
       throw error;
     }
     let tokenHash = util.hashToken(form.token);
-    const results = await userDB.query("auth/passwordReset", {key: tokenHash, include_docs: true});
+    const results = await userDB.query("auth/passwordReset", { key: tokenHash, include_docs: true });
     if (!results.rows.length) {
-      return BPromise.reject({status: 400, error: "Invalid token"});
+      return BPromise.reject({ status: 400, error: "Invalid token" });
     }
     user = results.rows[0].doc;
     if (user.forgotPassword.expires < Date.now()) {
-      return BPromise.reject({status: 400, error: "Token expired"});
+      return BPromise.reject({ status: 400, error: "Token expired" });
     }
     const hash = await util.hashPassword(form.password);
     if (!user.local) {
@@ -932,7 +943,7 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     let user;
     let token;
     let tokenHash;
-    const result = await userDB.query("auth/email", {key: email, include_docs: true});
+    const result = await userDB.query("auth/email", { key: email, include_docs: true });
     if (!result.rows.length) {
       throw new Error("User not found");
     }
@@ -964,7 +975,7 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
     let user;
     const result = await userDB.query("auth/verifyEmail", { key: token, include_docs: true });
     if (!result.rows.length) {
-      return BPromise.reject({error: "Invalid token", status: 400});
+      return BPromise.reject({ error: "Invalid token", status: 400 });
     }
     user = result.rows[0].doc;
     user.email = user.unverifiedEmail.email;
@@ -977,7 +988,7 @@ export default function(config, userDB, couchAuthDB, mailer, emitter) {
   this.changeEmail = async function(userId, newEmail, req) {
     req = req || {};
     if (!req.user) {
-      req.user = {provider: "local"};
+      req.user = { provider: "local" };
     }
     const err = await self.validateEmail(newEmail);
     if (err) {

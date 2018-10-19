@@ -29,7 +29,7 @@ export function hashPassword(password) {
 };
 
 export function verifyPassword(hashObj, password) {
-  var getHash = BPromise.promisify(pwd.hash, {context: pwd});
+  var getHash = BPromise.promisify(pwd.hash, { context: pwd });
   var iterations = hashObj.iterations;
   var salt = hashObj.salt;
   var derivedKey = hashObj.derived_key;
